@@ -28,7 +28,7 @@ import ObjectiveC
 
 /**
  Toast is a Swift extension that adds toast notifications to the `UIView` object class.
- It is intended to be simple, lightweight, and easy to use. Most toast notifications 
+ It is intended to be simple, lightweight, and easy to use. Most toast notifications
  can be triggered with a single line of code.
  
  The `makeToast` methods create a new view and then display it as toast.
@@ -108,7 +108,7 @@ public extension UIView {
      */
     func ld_makeToast(_ message: String?, duration: TimeInterval = ToastManager.shared.duration, position: ToastPosition = ToastManager.shared.position, title: String? = nil, image: UIImage? = nil, style: ToastStyle = ToastManager.shared.style, completion: ((_ didTap: Bool) -> Void)? = nil) {
         do {
-            let toast = try toastViewForMessage(message, title: title, image: image, style: style)
+            let toast = try ld_toastViewForMessage(message, title: title, image: image, style: style)
             ld_showToast(toast, duration: duration, position: position, completion: completion)
         } catch ToastError.missingParameters {
             print("Error: message, title, and image are all nil")
@@ -129,7 +129,7 @@ public extension UIView {
      */
     func ld_makeToast(_ message: String?, duration: TimeInterval = ToastManager.shared.duration, point: CGPoint, title: String?, image: UIImage?, style: ToastStyle = ToastManager.shared.style, completion: ((_ didTap: Bool) -> Void)?) {
         do {
-            let toast = try toastViewForMessage(message, title: title, image: image, style: style)
+            let toast = try ld_toastViewForMessage(message, title: title, image: image, style: style)
             ld_showToast(toast, duration: duration, point: point, completion: completion)
         } catch ToastError.missingParameters {
             print("Error: message, title, and image cannot all be nil")
@@ -174,7 +174,7 @@ public extension UIView {
             
             queue.add(toast)
         } else {
-            showToast(toast, duration: duration, point: point)
+            ld_showToast(toast, duration: duration, point: point)
         }
     }
     
@@ -205,7 +205,7 @@ public extension UIView {
      */
     func ld_hideToast(_ toast: UIView) {
         guard activeToasts.contains(toast) else { return }
-        hideToast(toast, fromTap: false)
+        ld_hideToast(toast, fromTap: false)
     }
     
     /**
@@ -254,9 +254,9 @@ public extension UIView {
         // sanity
         guard objc_getAssociatedObject(self, &ToastKeys.activityView) as? UIView == nil else { return }
         
-        let toast = createToastActivityView()
+        let toast = ld_createToastActivityView()
         let point = position.centerPoint(forToast: toast, inSuperview: self)
-        makeToastActivity(toast, point: point)
+        ld_makeToastActivity(toast, point: point)
     }
     
     /**
@@ -275,8 +275,8 @@ public extension UIView {
         // sanity
         guard objc_getAssociatedObject(self, &ToastKeys.activityView) as? UIView == nil else { return }
         
-        let toast = createToastActivityView()
-        makeToastActivity(toast, point: point)
+        let toast = ld_createToastActivityView()
+        ld_makeToastActivity(toast, point: point)
     }
     
     /**
@@ -304,7 +304,7 @@ public extension UIView {
     
     // MARK: - Private Activity Methods
     
-    private func makeToastActivity(_ toast: UIView, point: CGPoint) {
+    private func ld_makeToastActivity(_ toast: UIView, point: CGPoint) {
         toast.alpha = 0.0
         toast.center = point
         
@@ -317,7 +317,7 @@ public extension UIView {
         })
     }
     
-    private func createToastActivityView() -> UIView {
+    private func ld_createToastActivityView() -> UIView {
         let style = ToastManager.shared.style
         
         let activityView = UIView(frame: CGRect(x: 0.0, y: 0.0, width: style.activitySize.width, height: style.activitySize.height))
@@ -343,12 +343,12 @@ public extension UIView {
     
     // MARK: - Private Show/Hide Methods
     
-    private func showToast(_ toast: UIView, duration: TimeInterval, point: CGPoint) {
+    private func ld_showToast(_ toast: UIView, duration: TimeInterval, point: CGPoint) {
         toast.center = point
         toast.alpha = 0.0
         
         if ToastManager.shared.isTapToDismissEnabled {
-            let recognizer = UITapGestureRecognizer(target: self, action: #selector(UIView.handleToastTapped(_:)))
+            let recognizer = UITapGestureRecognizer(target: self, action: #selector(UIView.ld_handleToastTapped(_:)))
             toast.addGestureRecognizer(recognizer)
             toast.isUserInteractionEnabled = true
             toast.isExclusiveTouch = true
@@ -357,7 +357,7 @@ public extension UIView {
         activeToasts.add(toast)
         self.addSubview(toast)
 
-        let timer = Timer(timeInterval: duration, target: self, selector: #selector(UIView.toastTimerDidFinish(_:)), userInfo: toast, repeats: false)
+        let timer = Timer(timeInterval: duration, target: self, selector: #selector(UIView.ld_toastTimerDidFinish(_:)), userInfo: toast, repeats: false)
         objc_setAssociatedObject(toast, &ToastKeys.timer, timer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
 
         UIView.animate(withDuration: ToastManager.shared.style.fadeDuration, delay: 0.0, options: [.curveEaseOut, .allowUserInteraction], animations: {
@@ -370,7 +370,7 @@ public extension UIView {
         UIAccessibility.post(notification: .screenChanged, argument: toast)
     }
     
-    private func hideToast(_ toast: UIView, fromTap: Bool) {
+    private func ld_hideToast(_ toast: UIView, fromTap: Bool) {
         if let timer = objc_getAssociatedObject(toast, &ToastKeys.timer) as? Timer {
             timer.invalidate()
         }
@@ -387,7 +387,7 @@ public extension UIView {
             
             if let nextToast = self.queue.firstObject as? UIView, let duration = objc_getAssociatedObject(nextToast, &ToastKeys.duration) as? NSNumber, let point = objc_getAssociatedObject(nextToast, &ToastKeys.point) as? NSValue {
                 self.queue.removeObject(at: 0)
-                self.showToast(nextToast, duration: duration.doubleValue, point: point.cgPointValue)
+                self.ld_showToast(nextToast, duration: duration.doubleValue, point: point.cgPointValue)
             }
         }
     }
@@ -395,13 +395,13 @@ public extension UIView {
     // MARK: - Events
     
     @objc
-    private func handleToastTapped(_ recognizer: UITapGestureRecognizer) {
+    private func ld_handleToastTapped(_ recognizer: UITapGestureRecognizer) {
         guard let toast = recognizer.view else { return }
-        hideToast(toast, fromTap: true)
+        ld_hideToast(toast, fromTap: true)
     }
     
     @objc
-    private func toastTimerDidFinish(_ timer: Timer) {
+    private func ld_toastTimerDidFinish(_ timer: Timer) {
         guard let toast = timer.userInfo as? UIView else { return }
         ld_hideToast(toast)
     }
@@ -424,7 +424,7 @@ public extension UIView {
      @throws `ToastError.missingParameters` when message, title, and image are all nil
      @return The newly created toast view
     */
-    func toastViewForMessage(_ message: String?, title: String?, image: UIImage?, style: ToastStyle) throws -> UIView {
+    func ld_toastViewForMessage(_ message: String?, title: String?, image: UIImage?, style: ToastStyle) throws -> UIView {
         // sanity
         guard message != nil || title != nil || image != nil else {
             throw ToastError.missingParameters
